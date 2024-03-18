@@ -20,7 +20,10 @@
 
 package dig
 
-import "go.uber.org/dig/internal/graph"
+import (
+	//"fmt"
+	"go.uber.org/dig/internal/graph"
+)
 
 // graphNode is a single node in the dependency graph.
 type graphNode struct {
@@ -74,6 +77,7 @@ func (gh *graphHolder) EdgesFrom(u int) []int {
 			orders = append(orders, provider.Order(gh.s))
 		}
 	}
+//	fmt.Printf("%d -> %v\n", u, orders)
 	return orders
 }
 

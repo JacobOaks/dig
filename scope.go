@@ -251,7 +251,31 @@ func (s *Scope) getAllGroupProviders(name string, t reflect.Type) []provider {
 }
 
 func (s *Scope) getAllValueProviders(name string, t reflect.Type) []provider {
-	return s.getAllProviders(key{name: name, t: t})
+	k := key{name: name, t: t}
+	return s.getAllProviders(k)
+}
+
+func (s *Scope) getAllDecoratedValueProviders(name string, t reflect.Type) []provider {
+	var p []provider
+	k := key{name: name, t: t}
+	p = append(p, s.getAllProviders(k)...)
+	decs, found := s.getDecorators(k)
+	if found {
+		for _, pp := range decs.ParamList().Params {
+			ps, ok := pp.(paramSingle)
+			if !ok {
+				continue
+			}
+
+			if ps.Type == t {
+				continue
+			}
+
+		//	fmt.Printf("dec param found %v for %v\n", pp, p)
+			p = append(p, s.getAllProviders(key{name: ps.Name, t: ps.Type})...)
+		}
+	}
+	return p
 }
 
 func (s *Scope) getAllProviders(k key) []provider {

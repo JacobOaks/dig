@@ -26,6 +26,7 @@ import (
 
 	"go.uber.org/dig/internal/digreflect"
 	"go.uber.org/dig/internal/dot"
+	"go.uber.org/dig/internal/graph"
 )
 
 type decoratorState int
@@ -40,6 +41,7 @@ type decorator interface {
 	Call(c containerStore) error
 	ID() dot.CtorID
 	State() decoratorState
+	ParamList() paramList
 }
 
 type decoratorNode struct {
@@ -70,6 +72,8 @@ type decoratorNode struct {
 	callback Callback
 }
 
+func (d *decoratorNode) ParamList() paramList { return d.params }
+
 func newDecoratorNode(dcor interface{}, s *Scope, opts decorateOptions) (*decoratorNode, error) {
 	dval := reflect.ValueOf(dcor)
 	dtype := dval.Type()
@@ -96,6 +100,7 @@ func newDecoratorNode(dcor interface{}, s *Scope, opts decorateOptions) (*decora
 		s:        s,
 		callback: opts.Callback,
 	}
+
 	return n, nil
 }
 
@@ -277,6 +282,18 @@ func (s *Scope) Decorate(decorator interface{}, opts ...DecorateOption) error {
 				group: res.Group,
 			}
 		}
+	}
+
+	allScopes := s.appendSubscopes(nil)
+	for _, s := range allScopes {
+		s.isVerifiedAcyclic = false
+		if s.deferAcyclicVerification {
+			continue
+		}
+		if ok, cycle := graph.IsAcyclic(s.gh); !ok {
+			return newErrInvalidInput("this function introduces a cycle", s.cycleDetectedError(cycle))
+		}
+		s.isVerifiedAcyclic = true
 	}
 	return nil
 }
